@@ -16,7 +16,7 @@ function Test-JaInstalado($nomePrograma) {
 function Obter-Arquivo($url, $nomeDestino) {
     $caminhoArquivo = Join-Path $caminhoTemp $nomeDestino
     if (Test-Path $caminhoArquivo) {
-        Write-Host "  -> Arquivo $nomeDestino ja presente no cache." -ForegroundColor Cyan
+        Write-Host "  -> Arquivo $nomeDestino ja presente na pasta. Pulando download..." -ForegroundColor Cyan
     } else {
         Write-Host "  -> Baixando $nomeDestino..." -ForegroundColor Gray
         Invoke-WebRequest -Uri $url -OutFile $caminhoArquivo
@@ -24,37 +24,43 @@ function Obter-Arquivo($url, $nomeDestino) {
     return $caminhoArquivo
 }
 
-$acoes = @(); if($instalarPrint){$acoes+="P"}; if($instalarScan){$acoes+="S"}; if($instalarEPM){$acoes+="M"}; if($instalarEDC){$acoes+="D"}
+$acoes = @(); if ($instalarPrint) { $acoes += "P" }; if ($instalarScan) { $acoes += "S" }; if ($instalarEPM) { $acoes += "M" }; if ($instalarEDC) { $acoes += "D" }
 $totalEtapas = $acoes.Count; $etapaAtual = 1
 
+Write-Host "`n>>> PROCESSANDO: $modelo" -ForegroundColor Cyan
+
 if ($instalarPrint) {
-    Write-Host "`n[$etapaAtual/$totalEtapas] DRIVER DE IMPRESSAO (FORCANDO ESPECIFICO)" -ForegroundColor Yellow
-    $novoNome = Read-Host "  -> Nome desejado"
-    $ip = Read-Host "  -> IP"
-    $filePrint = Obter-Arquivo -url $urlPrint -nomeDestino ("print_"+($modelo -replace '\s+','_')+".exe")
+    Write-Host "`n[$etapaAtual/$totalEtapas] DRIVER DE IMPRESSAO" -ForegroundColor Yellow
+    $novoNome = Read-Host "  -> Nome desejado para a impressora"
+    $ip = Read-Host "  -> Endereco IP"
+    
+    $nomeArquivo = "print_" + ($modelo -replace '\s+','_') + ".exe"
+    $filePrint = Obter-Arquivo -url $urlPrint -nomeDestino $nomeArquivo
     
     Start-Process $filePrint -ArgumentList "/S" -Wait
     Start-Sleep -Seconds 10
 
     if (-not (Get-PrinterPort $ip -ErrorAction SilentlyContinue)) { Add-PrinterPort -Name $ip -PrinterHostAddress $ip }
     
-    $impGenerica = Get-Printer | Where-Object {$_.DriverName -like "*Samsung Universal*" -or $_.Name -like "*Samsung Universal*"} | Select-Object -First 1
+    $imp = Get-Printer | Where-Object {$_.DriverName -like "*Samsung Universal*" -or $_.Name -like "*Samsung Universal*" -or $_.Name -like $filtroDriverWindows} | Select-Object -First 1
     
     try {
-        if ($impGenerica) {
-            Set-Printer -Name $impGenerica.Name -DriverName $filtroDriverWindows -PortName $ip
-            Rename-Printer -Name $impGenerica.Name -NewName $novoNome
+        if ($imp) {
+            Set-Printer -Name $imp.Name -DriverName $filtroDriverWindows -PortName $ip
+            Rename-Printer -Name $imp.Name -NewName $novoNome
+            Write-Host "  -> OK: Impressora configurada com sucesso!" -ForegroundColor Green
         } else {
             Add-Printer -Name $novoNome -DriverName $filtroDriverWindows -PortName $ip
+            Write-Host "  -> OK: Fila criada manualmente com driver especifico!" -ForegroundColor Green
         }
-        Write-Host "  -> OK: Driver $filtroDriverWindows configurado!" -ForegroundColor Green
-    } catch { Write-Host "  -> Erro ao injetar driver. Verifique o nome no CSV." -ForegroundColor Red }
+    } catch { Write-Host "  -> Erro na configuracao final. Verifique o FiltroDriver no CSV." -ForegroundColor Red }
     $etapaAtual++
 }
 
 if ($instalarScan) {
     Write-Host "`n[$etapaAtual/$totalEtapas] DRIVER DE SCAN" -ForegroundColor Yellow
-    $fileScan = Obter-Arquivo -url $urlScan -nomeDestino ("scan_"+($modelo -replace '\s+','_')+".exe")
+    $nomeArquivoScan = "scan_" + ($modelo -replace '\s+','_') + ".exe"
+    $fileScan = Obter-Arquivo -url $urlScan -nomeDestino $nomeArquivoScan
     Start-Process $fileScan -ArgumentList "/S" -Wait
     $etapaAtual++
 }
@@ -76,5 +82,6 @@ if ($instalarEDC) {
     } else { Write-Host "  -> Ja instalado." -ForegroundColor Cyan }
     $etapaAtual++
 }
-Write-Host "`nEtapa finalizada!" -ForegroundColor Green
+
+Write-Host "`nProcesso finalizado!" -ForegroundColor Green
 Start-Sleep -Seconds 2
