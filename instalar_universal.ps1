@@ -4,9 +4,12 @@ param (
     [bool]$instalarEPM, [bool]$instalarEDC
 )
 
+# --- LINKS GLOBAIS ---
 $urlEPM = "https://ftp.hp.com/pub/softlib/software13/printers/SS/Common_SW/WIN_EPM_V2.00.01.36.exe"
 $urlEDC = "https://ftp.hp.com/pub/softlib/software13/printers/SS/SL-M5270LX/WIN_EDC_V2.02.61.exe"
+
 $caminhoTemp = "$env:USERPROFILE\Downloads\Instalacao_Samsung"
+if (-not (Test-Path $caminhoTemp)) { New-Item $caminhoTemp -ItemType Directory | Out-Null }
 
 function Test-JaInstalado($nomePrograma) {
     $chaves = @("HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*","HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*")
@@ -27,61 +30,73 @@ function Obter-Arquivo($url, $nomeDestino) {
 $acoes = @(); if ($instalarPrint) { $acoes += "P" }; if ($instalarScan) { $acoes += "S" }; if ($instalarEPM) { $acoes += "M" }; if ($instalarEDC) { $acoes += "D" }
 $totalEtapas = $acoes.Count; $etapaAtual = 1
 
-Write-Host "`n>>> PROCESSANDO: $modelo" -ForegroundColor Cyan
+Write-Host "`n>>> PROCESSANDO ETAPA ($totalEtapas Etapa(s))" -ForegroundColor Cyan
 
+# --- ETAPA: IMPRESSAO ---
 if ($instalarPrint) {
     Write-Host "`n[$etapaAtual/$totalEtapas] DRIVER DE IMPRESSAO" -ForegroundColor Yellow
     $novoNome = Read-Host "  -> Nome desejado para a impressora"
     $ip = Read-Host "  -> Endereco IP"
     
-    $nomeArquivo = "print_" + ($modelo -replace '\s+','_') + ".exe"
+    $nomeArquivo = "driver_print_" + ($modelo -replace '\s+','_') + ".exe"
     $filePrint = Obter-Arquivo -url $urlPrint -nomeDestino $nomeArquivo
     
+    Write-Host "  -> Instalando driver e extraindo arquivos..." -ForegroundColor Gray
     Start-Process $filePrint -ArgumentList "/S" -Wait
     Start-Sleep -Seconds 10
 
-    if (-not (Get-PrinterPort $ip -ErrorAction SilentlyContinue)) { Add-PrinterPort -Name $ip -PrinterHostAddress $ip }
+    $impGenerica = Get-Printer | Where-Object {$_.DriverName -like "*Samsung Universal*" -or $_.Name -like "*Samsung Universal*"} | Select-Object -First 1
+    Write-Host "  -> Vinculando ao Driver Especifico ($filtroDriverWindows)..." -ForegroundColor Gray
     
-    $imp = Get-Printer | Where-Object {$_.DriverName -like "*Samsung Universal*" -or $_.Name -like "*Samsung Universal*" -or $_.Name -like $filtroDriverWindows} | Select-Object -First 1
-    
+    if (-not (Get-PrinterPort $ip -ErrorAction SilentlyContinue)) { 
+        Add-PrinterPort -Name $ip -PrinterHostAddress $ip 
+    }
+
     try {
-        if ($imp) {
-            Set-Printer -Name $imp.Name -DriverName $filtroDriverWindows -PortName $ip
-            Rename-Printer -Name $imp.Name -NewName $novoNome
-            Write-Host "  -> OK: Impressora configurada com sucesso!" -ForegroundColor Green
+        if ($impGenerica) {
+            Set-Printer -Name $impGenerica.Name -DriverName $filtroDriverWindows -PortName $ip
+            Rename-Printer -Name $impGenerica.Name -NewName $novoNome
         } else {
             Add-Printer -Name $novoNome -DriverName $filtroDriverWindows -PortName $ip
-            Write-Host "  -> OK: Fila criada manualmente com driver especifico!" -ForegroundColor Green
         }
-    } catch { Write-Host "  -> Erro na configuracao final. Verifique o FiltroDriver no CSV." -ForegroundColor Red }
+        Write-Host "  -> OK: Fila configurada com o driver especifico!" -ForegroundColor Green
+    } catch {
+        Write-Host "  -> AVISO: Nao foi possivel forçar o driver '$filtroDriverWindows'." -ForegroundColor Yellow
+    }
     $etapaAtual++
 }
 
+# --- ETAPA: SCAN ---
 if ($instalarScan) {
     Write-Host "`n[$etapaAtual/$totalEtapas] DRIVER DE SCAN" -ForegroundColor Yellow
-    $nomeArquivoScan = "scan_" + ($modelo -replace '\s+','_') + ".exe"
+    $nomeArquivoScan = "driver_scan_" + ($modelo -replace '\s+','_') + ".exe"
     $fileScan = Obter-Arquivo -url $urlScan -nomeDestino $nomeArquivoScan
     Start-Process $fileScan -ArgumentList "/S" -Wait
+    Write-Host "  -> OK: Scan instalado!" -ForegroundColor Green
     $etapaAtual++
 }
 
+# --- ETAPA: EPM ---
 if ($instalarEPM) {
     Write-Host "`n[$etapaAtual/$totalEtapas] EASY PRINTER MANAGER" -ForegroundColor Yellow
     if (-not (Test-JaInstalado "Easy Printer Manager")) {
         $fileEPM = Obter-Arquivo -url $urlEPM -nomeDestino "EPM_Universal.exe"
         Start-Process $fileEPM -ArgumentList "/S" -Wait
-    } else { Write-Host "  -> Ja instalado." -ForegroundColor Cyan }
+        Write-Host "  -> OK: Instalado!" -ForegroundColor Green
+    } else { Write-Host "  -> Ja instalado no sistema." -ForegroundColor Cyan }
     $etapaAtual++
 }
 
+# --- ETAPA: EDC ---
 if ($instalarEDC) {
     Write-Host "`n[$etapaAtual/$totalEtapas] EASY DOCUMENT CREATOR" -ForegroundColor Yellow
     if (-not (Test-JaInstalado "Easy Document Creator")) {
         $fileEDC = Obter-Arquivo -url $urlEDC -nomeDestino "EDC_Universal.exe"
         Start-Process $fileEDC -ArgumentList "/S" -Wait
-    } else { Write-Host "  -> Ja instalado." -ForegroundColor Cyan }
+        Write-Host "  -> OK: Instalado!" -ForegroundColor Green
+    } else { Write-Host "  -> Ja instalado no sistema." -ForegroundColor Cyan }
     $etapaAtual++
 }
 
-Write-Host "`nProcesso finalizado!" -ForegroundColor Green
+Write-Host "`nEtapa finalizada! Voltando ao menu..." -ForegroundColor Green
 Start-Sleep -Seconds 2
