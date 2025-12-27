@@ -32,7 +32,7 @@ $totalEtapas = $acoes.Count; $etapaAtual = 1
 
 Write-Host "`n>>> PROCESSANDO ETAPA ($totalEtapas Etapa(s))" -ForegroundColor Cyan
 
-# --- ETAPA: IMPRESSAO (VERSÃO HÍBRIDA FINAL) ---
+# --- ETAPA: IMPRESSAO (LÓGICA UNIFICADA) ---
 if ($instalarPrint) {
     Write-Host "`n[$etapaAtual/$totalEtapas] DRIVER DE IMPRESSAO" -ForegroundColor Yellow
     $novoNome = Read-Host "  -> Nome desejado para a impressora"
@@ -43,45 +43,79 @@ if ($instalarPrint) {
     
     Write-Host "  -> Instalando driver... (Aguarde o instalador)" -ForegroundColor Gray
     Start-Process $filePrint -ArgumentList "/S" -Wait
-    Start-Sleep -Seconds 10 # Tempo de registro no Windows
+    Start-Sleep -Seconds 10
 
-    # Garantimos a porta IP primeiro
+    # Garantir porta IP
     if (-not (Get-PrinterPort $ip -ErrorAction SilentlyContinue)) { 
         Add-PrinterPort -Name $ip -PrinterHostAddress $ip 
     }
 
-    Write-Host "  -> Localizando impressora para configuracao..." -ForegroundColor Gray
+    Write-Host "  -> Localizando impressora criada pelo instalador..." -ForegroundColor Gray
 
-    # LOGICA DE BUSCA HÍBRIDA:
-    # 1. Tenta achar pelo nome do Driver (Caso M4070/M4020)
-    $impEspecífica = Get-Printer | Where-Object {$_.Name -like "*$filtroDriverWindows*" -or $_.DriverName -like "*$filtroDriverWindows*"} | Select-Object -First 1
-    
-    # 2. Se não achar, tenta achar pela Genérica/Universal (Caso M4080)
-    $impGenerica = $null
-    if (-not $impEspecífica) {
-        $impGenerica = Get-Printer | Where-Object {$_.DriverName -like "*Samsung Universal*" -or $_.Name -like "*Samsung Universal*"} | Select-Object -First 1
-    }
+    # === LÓGICA UNIFICADA ===
+    # Busca qualquer fila que contenha o filtro do driver OU seja Universal Samsung
+    $filaEncontrada = Get-Printer | Where-Object {
+        $_.Name -like "*$filtroDriverWindows*" -or 
+        $_.DriverName -like "*$filtroDriverWindows*" -or
+        $_.DriverName -like "*Samsung Universal*" -or 
+        $_.Name -like "*Samsung Universal*"
+    } | Select-Object -First 1
 
     try {
-        if ($impEspecífica) {
-            # Se achou a fila específica (M4070/M4020), apenas aponta o IP e renomeia
-            Set-Printer -Name $impEspecífica.Name -PortName $ip
-            Rename-Printer -Name $impEspecífica.Name -NewName $novoNome
-            Write-Host "  -> OK: Impressora específica configurada!" -ForegroundColor Green
-        } 
-        elseif ($impGenerica) {
-            # Se achou a Universal (M4080), troca o driver para o específico e renomeia
-            Set-Printer -Name $impGenerica.Name -DriverName $filtroDriverWindows -PortName $ip
-            Rename-Printer -Name $impGenerica.Name -NewName $novoNome
-            Write-Host "  -> OK: Fila Universal convertida para específica!" -ForegroundColor Green
+        if ($filaEncontrada) {
+            Write-Host "  -> Fila detectada: $($filaEncontrada.Name)" -ForegroundColor Gray
+            
+            # SEMPRE força o driver correto (resolve M4080 e garante M4020/M4070)
+            Set-Printer -Name $filaEncontrada.Name -DriverName $filtroDriverWindows -PortName $ip -ErrorAction Stop
+            
+            # Renomeia para o nome desejado
+            Rename-Printer -Name $filaEncontrada.Name -NewName $novoNome -ErrorAction Stop
+            
+            Write-Host "  -> OK: Impressora configurada com sucesso!" -ForegroundColor Green
         } 
         else {
-            # Se o instalador não criou nada, cria do zero
+            # Caso extremo: nenhuma fila foi criada, criar do zero
             Add-Printer -Name $novoNome -DriverName $filtroDriverWindows -PortName $ip
-            Write-Host "  -> OK: Fila criada manualmente do zero!" -ForegroundColor Green
+            Write-Host "  -> OK: Fila criada manualmente!" -ForegroundColor Green
         }
     } catch {
-        Write-Host "  -> AVISO: Erro ao finalizar configuracao. Verifique o FiltroDriver no CSV." -ForegroundColor Yellow
+        Write-Host "  -> ERRO: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "  -> Tentando criar fila manualmente..." -ForegroundColor Yellow
+        try {
+            Add-Printer -Name $novoNome -DriverName $filtroDriverWindows -PortName $ip
+            Write-Host "  -> OK: Fila criada com sucesso!" -ForegroundColor Green
+        } catch {
+            Write-Host "  -> FALHA: Verifique se o driver '$filtroDriverWindows' foi instalado corretamente." -ForegroundColor Red
+        }
+    }
+    
+    # === LIMPEZA DE DUPLICATAS ===
+    Start-Sleep -Seconds 2
+    Write-Host "  -> Verificando filas duplicadas..." -ForegroundColor Gray
+    
+    $todasImpressoras = Get-Printer
+    $duplicatas = $todasImpressoras | Where-Object { 
+        $_.Name -ne $novoNome -and  # Não é a impressora que configuramos
+        (
+            $_.Name -like "*$filtroDriverWindows*" -or 
+            $_.DriverName -like "*$filtroDriverWindows*" -or
+            ($_.DriverName -like "*Samsung Universal*" -and $_.Name -like "*Samsung Universal*")  # Remove Universal sobrando
+        ) -and
+        $_.Name -notlike "*Fax*"  # Protege filas de Fax
+    }
+    
+    if ($duplicatas) {
+        Write-Host "  -> Removendo filas duplicadas:" -ForegroundColor Yellow
+        foreach ($dup in $duplicatas) {
+            try {
+                Remove-Printer -Name $dup.Name -Confirm:$false -ErrorAction Stop
+                Write-Host "     * Removida: $($dup.Name)" -ForegroundColor Gray
+            } catch {
+                Write-Host "     * Falha ao remover: $($dup.Name)" -ForegroundColor Red
+            }
+        }
+    } else {
+        Write-Host "  -> Nenhuma duplicata encontrada. OK!" -ForegroundColor Green
     }
     
     $etapaAtual++
