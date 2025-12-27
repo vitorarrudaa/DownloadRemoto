@@ -7,7 +7,7 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
 # --- CONFIGURACAO DO REPOSITORIO GITHUB ---
-$usuarioGithub = "suportetech3brasil"
+$usuarioGithub = "vitorarrudaa"
 $repoGithub    = "DownloadRemoto"
 $branch        = "main"
 $baseUrl       = "https://raw.githubusercontent.com/$usuarioGithub/$repoGithub/$branch"
@@ -105,3 +105,4 @@ do {
         } while ($continuarNoModelo)
     }
 } while ($true)
+
