@@ -1,12 +1,12 @@
 # ================================================================================
-# SCRIPT: Menu Principal - Sistema de Instalação de Impressoras Samsung
-# VERSÃO: 2.0 (Otimizado)
-# DESCRIÇÃO: Menu interativo para instalação remota de drivers Samsung
+# SCRIPT: Menu Principal - Sistema de Instalacao de Impressoras Samsung
+# VERSAO: 2.0 (Otimizado)
+# DESCRICAO: Menu interativo para instalacao remota de drivers Samsung
 # ================================================================================
 
-# --- VERIFICAÇÃO DE PRIVILÉGIOS ---
+# --- VERIFICACAO DE PRIVILEGIOS ---
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")) {
-    Write-Host "`n[ERRO] Este script requer privilégios de ADMINISTRADOR" -ForegroundColor Red
+    Write-Host "`n[ERRO] Este script requer privilegios de ADMINISTRADOR" -ForegroundColor Red
     Write-Host "Abra o PowerShell como Administrador e execute novamente.`n" -ForegroundColor Yellow
     Read-Host "Pressione ENTER para sair"
     exit
@@ -14,27 +14,27 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 Set-ExecutionPolicy Bypass -Scope Process -Force
 
-# --- CONFIGURAÇÃO DO REPOSITÓRIO GITHUB ---
+# --- CONFIGURACAO DO REPOSITORIO GITHUB ---
 $Config = @{
-    Usuario    = "vitorarrudaa"
+    Usuario     = "vitorarrudaa"
     Repositorio = "DownloadRemoto"
-    Branch     = "main"
+    Branch      = "main"
 }
 $Config.BaseUrl = "https://raw.githubusercontent.com/$($Config.Usuario)/$($Config.Repositorio)/$($Config.Branch)"
 
-# --- DIRETÓRIOS LOCAIS ---
+# --- DIRETORIOS LOCAIS ---
 $Paths = @{
     Raiz   = "$env:USERPROFILE\Downloads\Suporte_Tech3"
     CSV    = "$env:USERPROFILE\Downloads\Suporte_Tech3\dados_impressoras.csv"
     Motor  = "$env:USERPROFILE\Downloads\Suporte_Tech3\instalar_universal.ps1"
 }
 
-# Criar diretório se não existir
+# Criar diretorio se nao existir
 if (-not (Test-Path $Paths.Raiz)) {
     New-Item $Paths.Raiz -ItemType Directory -Force | Out-Null
 }
 
-# --- FUNÇÃO: SINCRONIZAR ARQUIVOS DO GITHUB ---
+# --- FUNCAO: SINCRONIZAR ARQUIVOS DO GITHUB ---
 function Sync-GitHubFiles {
     Write-Host "`n[INFO] Sincronizando arquivos com GitHub..." -ForegroundColor Cyan
     
@@ -45,7 +45,7 @@ function Sync-GitHubFiles {
                          -ErrorAction Stop `
                          -UseBasicParsing
         
-        # Download do script de instalação
+        # Download do script de instalacao
         Invoke-WebRequest -Uri "$($Config.BaseUrl)/instalar_universal.ps1" `
                          -OutFile $Paths.Motor `
                          -ErrorAction Stop `
@@ -57,19 +57,19 @@ function Sync-GitHubFiles {
     catch {
         Write-Host "`n[ERRO] Falha ao sincronizar arquivos do GitHub" -ForegroundColor Red
         Write-Host "Detalhes: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host "Verifique sua conexão com a internet e o repositório.`n" -ForegroundColor Yellow
+        Write-Host "Verifique sua conexao com a internet e o repositorio.`n" -ForegroundColor Yellow
         Read-Host "Pressione ENTER para sair"
         return $false
     }
 }
 
-# --- FUNÇÃO: CARREGAR DADOS DAS IMPRESSORAS ---
+# --- FUNCAO: CARREGAR DADOS DAS IMPRESSORAS ---
 function Get-PrinterData {
     try {
         $dados = Import-Csv -Path $Paths.CSV -Delimiter "," -ErrorAction Stop
         
         if ($dados.Count -eq 0) {
-            throw "CSV está vazio"
+            throw "CSV esta vazio"
         }
         
         return $dados
@@ -82,18 +82,18 @@ function Get-PrinterData {
     }
 }
 
-# --- FUNÇÃO: EXIBIR MENU DE MODELOS ---
+# --- FUNCAO: EXIBIR MENU DE MODELOS ---
 function Show-ModelMenu {
     param($listaModelos)
     
     Clear-Host
-    Write-Host "╔════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
-    Write-Host "║       TECH3 - INSTALADOR DE IMPRESSORAS SAMSUNG       ║" -ForegroundColor Magenta
-    Write-Host "╚════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
+    Write-Host "========================================================" -ForegroundColor Magenta
+    Write-Host "    TECH3 - INSTALADOR DE IMPRESSORAS SAMSUNG" -ForegroundColor Magenta
+    Write-Host "========================================================" -ForegroundColor Magenta
     Write-Host ""
     
     foreach ($item in $listaModelos) {
-        $temScan = if ($item.TemScan -eq "S") { "(Impressão + Scan)" } else { "(Apenas Impressão)" }
+        $temScan = if ($item.TemScan -eq "S") { "(Impressao + Scan)" } else { "(Apenas Impressao)" }
         Write-Host "  $($item.ID)) $($item.Modelo) $temScan" -ForegroundColor Cyan
     }
     
@@ -102,35 +102,35 @@ function Show-ModelMenu {
     Write-Host ""
 }
 
-# --- FUNÇÃO: EXIBIR MENU DE CONFIGURAÇÃO ---
+# --- FUNCAO: EXIBIR MENU DE CONFIGURACAO ---
 function Show-ConfigMenu {
     param($modelo)
     
     Clear-Host
-    Write-Host "╔════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-    Write-Host "║  MODELO SELECIONADO: $($modelo.Modelo.PadRight(31)) ║" -ForegroundColor Cyan
-    Write-Host "╚════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+    Write-Host "========================================================" -ForegroundColor Cyan
+    Write-Host "  MODELO SELECIONADO: $($modelo.Modelo)" -ForegroundColor Cyan
+    Write-Host "========================================================" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  1) Instalação Completa (Todos os componentes)" -ForegroundColor White
-    Write-Host "  2) Instalação Personalizada (Escolher componentes)" -ForegroundColor White
+    Write-Host "  1) Instalacao Completa (Todos os componentes)" -ForegroundColor White
+    Write-Host "  2) Instalacao Personalizada (Escolher componentes)" -ForegroundColor White
     Write-Host ""
     Write-Host "  V) Voltar ao menu anterior" -ForegroundColor Gray
     Write-Host ""
 }
 
-# --- FUNÇÃO: EXIBIR MENU PERSONALIZADO ---
+# --- FUNCAO: EXIBIR MENU PERSONALIZADO ---
 function Show-CustomMenu {
     param($modelo)
     
     Clear-Host
-    Write-Host "╔════════════════════════════════════════════════════════╗" -ForegroundColor Yellow
-    Write-Host "║  INSTALAÇÃO PERSONALIZADA: $($modelo.Modelo.PadRight(25)) ║" -ForegroundColor Yellow
-    Write-Host "╚════════════════════════════════════════════════════════╝" -ForegroundColor Yellow
+    Write-Host "========================================================" -ForegroundColor Yellow
+    Write-Host "  INSTALACAO PERSONALIZADA: $($modelo.Modelo)" -ForegroundColor Yellow
+    Write-Host "========================================================" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  1) Driver de Impressão" -ForegroundColor White
+    Write-Host "  1) Driver de Impressao" -ForegroundColor White
     
     if ($modelo.TemScan -eq "S") {
-        Write-Host "  2) Driver de Digitalização (Scan)" -ForegroundColor White
+        Write-Host "  2) Driver de Digitalizacao (Scan)" -ForegroundColor White
         Write-Host "  3) Easy Document Creator (EDC)" -ForegroundColor White
         Write-Host "  4) Easy Printer Manager (EPM)" -ForegroundColor White
     } else {
@@ -142,7 +142,7 @@ function Show-CustomMenu {
     Write-Host ""
 }
 
-# --- FUNÇÃO: EXECUTAR INSTALAÇÃO ---
+# --- FUNCAO: EXECUTAR INSTALACAO ---
 function Invoke-Installation {
     param(
         [hashtable]$parametros
@@ -152,13 +152,13 @@ function Invoke-Installation {
         & $Paths.Motor @parametros
     }
     catch {
-        Write-Host "`n[ERRO] Falha ao executar instalação" -ForegroundColor Red
+        Write-Host "`n[ERRO] Falha ao executar instalacao" -ForegroundColor Red
         Write-Host "Detalhes: $($_.Exception.Message)`n" -ForegroundColor Red
         Read-Host "Pressione ENTER para continuar"
     }
 }
 
-# --- SINCRONIZAÇÃO INICIAL ---
+# --- SINCRONIZACAO INICIAL ---
 if (-not (Sync-GitHubFiles)) {
     exit
 }
@@ -183,102 +183,10 @@ do {
     $modeloSelecionado = $listaImpressoras | Where-Object { $_.ID -eq $escolhaModelo }
     
     if (-not $modeloSelecionado) {
-        Write-Host "`n[AVISO] Opção inválida! Tente novamente.`n" -ForegroundColor Yellow
+        Write-Host "`n[AVISO] Opcao invalida! Tente novamente.`n" -ForegroundColor Yellow
         Start-Sleep -Seconds 2
         continue
     }
     
-    # --- SUBMENU: TIPO DE INSTALAÇÃO ---
-    $continuarNoModelo = $true
-    
-    while ($continuarNoModelo) {
-        Show-ConfigMenu -modelo $modeloSelecionado
-        $tipoInstalacao = Read-Host "Escolha uma opção"
-        
-        # Voltar ao menu de modelos
-        if ($tipoInstalacao -eq "V" -or $tipoInstalacao -eq "v") {
-            $continuarNoModelo = $false
-            break
-        }
-        
-        # Preparar parâmetros base
-        $params = @{
-            modelo               = $modeloSelecionado.Modelo
-            urlPrint            = $modeloSelecionado.UrlPrint
-            temScan             = $modeloSelecionado.TemScan
-            urlScan             = $modeloSelecionado.UrlScan
-            filtroDriverWindows = $modeloSelecionado.FiltroDriver
-            instalarPrint       = $false
-            instalarScan        = $false
-            instalarEPM         = $false
-            instalarEDC         = $false
-        }
-        
-        # --- OPÇÃO 1: INSTALAÇÃO COMPLETA ---
-        if ($tipoInstalacao -eq "1") {
-            $params.instalarPrint = $true
-            $params.instalarEPM = $true
-            
-            if ($modeloSelecionado.TemScan -eq "S") {
-                $params.instalarScan = $true
-                $params.instalarEDC = $true
-            }
-            
-            Invoke-Installation -parametros $params
-            $continuarNoModelo = $false
-        }
-        # --- OPÇÃO 2: INSTALAÇÃO PERSONALIZADA ---
-        elseif ($tipoInstalacao -eq "2") {
-            $sairPersonalizado = $false
-            
-            while (-not $sairPersonalizado) {
-                Show-CustomMenu -modelo $modeloSelecionado
-                $componenteEscolhido = Read-Host "Escolha o componente"
-                
-                # Voltar ao menu anterior
-                if ($componenteEscolhido -eq "V" -or $componenteEscolhido -eq "v") {
-                    $sairPersonalizado = $true
-                    break
-                }
-                
-                # Resetar flags
-                $params.instalarPrint = $false
-                $params.instalarScan = $false
-                $params.instalarEDC = $false
-                $params.instalarEPM = $false
-                
-                # Configurar componente selecionado
-                if ($modeloSelecionado.TemScan -eq "S") {
-                    switch ($componenteEscolhido) {
-                        "1" { $params.instalarPrint = $true }
-                        "2" { $params.instalarScan = $true }
-                        "3" { $params.instalarEDC = $true }
-                        "4" { $params.instalarEPM = $true }
-                        default {
-                            Write-Host "`n[AVISO] Opção inválida!`n" -ForegroundColor Yellow
-                            Start-Sleep -Seconds 2
-                            continue
-                        }
-                    }
-                } else {
-                    switch ($componenteEscolhido) {
-                        "1" { $params.instalarPrint = $true }
-                        "2" { $params.instalarEPM = $true }
-                        default {
-                            Write-Host "`n[AVISO] Opção inválida!`n" -ForegroundColor Yellow
-                            Start-Sleep -Seconds 2
-                            continue
-                        }
-                    }
-                }
-                
-                Invoke-Installation -parametros $params
-            }
-        }
-        else {
-            Write-Host "`n[AVISO] Opção inválida! Tente novamente.`n" -ForegroundColor Yellow
-            Start-Sleep -Seconds 2
-        }
-    }
-    
-} while ($true)
+    # --- SUBMENU: TIPO DE INSTALACAO ---
+    $continuarNoMo
