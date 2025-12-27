@@ -80,12 +80,19 @@ if ($instalarPrint) {
         }
     } catch {
         Write-Host "  -> ERRO: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "  -> Detalhes completos do erro:" -ForegroundColor Red
+        Write-Host $_.Exception | Format-List -Force | Out-String
+        Read-Host "Pressione ENTER para continuar e tentar criar fila manualmente"
+        
         Write-Host "  -> Tentando criar fila manualmente..." -ForegroundColor Yellow
         try {
             Add-Printer -Name $novoNome -DriverName $filtroDriverWindows -PortName $ip
             Write-Host "  -> OK: Fila criada com sucesso!" -ForegroundColor Green
         } catch {
             Write-Host "  -> FALHA: Verifique se o driver '$filtroDriverWindows' foi instalado corretamente." -ForegroundColor Red
+            Write-Host "  -> Erro detalhado:" -ForegroundColor Red
+            Write-Host $_.Exception | Format-List -Force | Out-String
+            Read-Host "Pressione ENTER para voltar ao menu"
         }
     }
     
@@ -112,6 +119,7 @@ if ($instalarPrint) {
                 Write-Host "     * Removida: $($dup.Name)" -ForegroundColor Gray
             } catch {
                 Write-Host "     * Falha ao remover: $($dup.Name)" -ForegroundColor Red
+                Write-Host "       Motivo: $($_.Exception.Message)" -ForegroundColor Red
             }
         }
     } else {
