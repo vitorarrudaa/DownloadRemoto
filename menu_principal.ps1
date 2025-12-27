@@ -189,4 +189,96 @@ do {
     }
     
     # --- SUBMENU: TIPO DE INSTALACAO ---
-    $continuarNoMo
+    $continuarNoModelo = $true
+    
+    while ($continuarNoModelo) {
+        Show-ConfigMenu -modelo $modeloSelecionado
+        $tipoInstalacao = Read-Host "Escolha uma opcao"
+        
+        # Voltar ao menu de modelos
+        if ($tipoInstalacao -eq "V" -or $tipoInstalacao -eq "v") {
+            $continuarNoModelo = $false
+            break
+        }
+        
+        # Preparar parametros base
+        $params = @{
+            modelo               = $modeloSelecionado.Modelo
+            urlPrint            = $modeloSelecionado.UrlPrint
+            temScan             = $modeloSelecionado.TemScan
+            urlScan             = $modeloSelecionado.UrlScan
+            filtroDriverWindows = $modeloSelecionado.FiltroDriver
+            instalarPrint       = $false
+            instalarScan        = $false
+            instalarEPM         = $false
+            instalarEDC         = $false
+        }
+        
+        # --- OPCAO 1: INSTALACAO COMPLETA ---
+        if ($tipoInstalacao -eq "1") {
+            $params.instalarPrint = $true
+            $params.instalarEPM = $true
+            
+            if ($modeloSelecionado.TemScan -eq "S") {
+                $params.instalarScan = $true
+                $params.instalarEDC = $true
+            }
+            
+            Invoke-Installation -parametros $params
+            $continuarNoModelo = $false
+        }
+        # --- OPCAO 2: INSTALACAO PERSONALIZADA ---
+        elseif ($tipoInstalacao -eq "2") {
+            $sairPersonalizado = $false
+            
+            while (-not $sairPersonalizado) {
+                Show-CustomMenu -modelo $modeloSelecionado
+                $componenteEscolhido = Read-Host "Escolha o componente"
+                
+                # Voltar ao menu anterior
+                if ($componenteEscolhido -eq "V" -or $componenteEscolhido -eq "v") {
+                    $sairPersonalizado = $true
+                    break
+                }
+                
+                # Resetar flags
+                $params.instalarPrint = $false
+                $params.instalarScan = $false
+                $params.instalarEDC = $false
+                $params.instalarEPM = $false
+                
+                # Configurar componente selecionado
+                if ($modeloSelecionado.TemScan -eq "S") {
+                    switch ($componenteEscolhido) {
+                        "1" { $params.instalarPrint = $true }
+                        "2" { $params.instalarScan = $true }
+                        "3" { $params.instalarEDC = $true }
+                        "4" { $params.instalarEPM = $true }
+                        default {
+                            Write-Host "`n[AVISO] Opcao invalida!`n" -ForegroundColor Yellow
+                            Start-Sleep -Seconds 2
+                            continue
+                        }
+                    }
+                } else {
+                    switch ($componenteEscolhido) {
+                        "1" { $params.instalarPrint = $true }
+                        "2" { $params.instalarEPM = $true }
+                        default {
+                            Write-Host "`n[AVISO] Opcao invalida!`n" -ForegroundColor Yellow
+                            Start-Sleep -Seconds 2
+                            continue
+                        }
+                    }
+                }
+                
+                Invoke-Installation -parametros $params
+            }
+        }
+        else {
+            Write-Host "`n[AVISO] Opcao invalida! Tente novamente.`n" -ForegroundColor Yellow
+            Start-Sleep -Seconds 2
+        }
+    }
+    
+} while ($true)
