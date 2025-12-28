@@ -1,0 +1,113 @@
+# 🖨️ Sistema de Instalação Remota - Impressoras Samsung
+
+Sistema automatizado para instalação de drivers e utilitários Samsung via PowerShell remoto.
+
+---
+
+## 📋 **Estrutura do Repositório**
+
+```
+DownloadRemoto/
+├── menu.ps1                    # Menu principal (ponto de entrada)
+├── instalar_universal.ps1      # Motor de instalação universal
+├── dados_impressoras.csv       # Base de dados dos modelos
+└── README.md                   # Esta documentação
+```
+
+---
+
+## 🚀 **Como Usar**
+
+### **Instalação Remota (Recomendado)**
+
+Execute no PowerShell como **Administrador**:
+
+```powershell
+irm https://raw.githubusercontent.com/vitorarrudaa/DownloadRemoto/main/menu.ps1 | iex
+```
+
+> **Nota:** Substitua `vitorarrudaa` pelo usuário correto do GitHub quando migrar para produção.
+
+### **Instalação Local**
+
+1. Clone o repositório
+2. Execute `menu.ps1` como Administrador
+
+---
+
+## 🔧 **Modelos Suportados**
+
+| ID | Modelo | Recursos | Observações |
+|----|--------|----------|-------------|
+| 1 | Samsung M4020 | Impressão | Driver específico |
+| 2 | Samsung M4070 | Impressão + Scan | Driver específico + EDC |
+| 3 | Samsung M4080 | Impressão + Scan | Universal Print Driver + EDC |
+
+---
+
+## ✨ **Funcionalidades**
+
+### **Instalação Completa**
+Instala todos os componentes disponíveis para o modelo:
+- Driver de impressão
+- Driver de digitalização (se disponível)
+- Easy Printer Manager (EPM)
+- Easy Document Creator (EDC) (se disponível)
+
+### **Instalação Personalizada**
+Permite escolher componentes individuais para instalar.
+
+### **Múltiplas Instalações**
+Suporta instalação de várias impressoras do mesmo modelo com IPs diferentes:
+- Samsung 4020 - Setor 1
+- Samsung 4020 - Setor 2
+- Samsung 4020 - RH
+
+### **Limpeza Automática**
+Remove automaticamente filas duplicadas criadas pelos instaladores, preservando impressoras configuradas pelo usuário.
+
+---
+
+## 📝 **Adicionar Novo Modelo**
+
+### **1. Atualizar CSV**
+
+Edite `dados_impressoras.csv` e adicione uma linha:
+
+```csv
+4,Samsung MODELO,Nome do Driver Windows,URL_DRIVER_PRINT,S,URL_DRIVER_SCAN
+```
+
+**Campos:**
+- **ID**: Número sequencial único (próximo número disponível)
+- **Modelo**: Nome amigável (ex: "Samsung M5020")
+- **FiltroDriver**: Nome exato do driver no Windows
+- **UrlPrint**: Link direto do instalador de impressão (.exe)
+- **TemScan**: `S` (com scan) ou `N` (sem scan)
+- **UrlScan**: Link do driver de scan (deixe vazio se `TemScan=N`)
+
+### **2. Descobrir o Nome do Driver**
+
+Execute após instalar o driver manualmente:
+
+```powershell
+Get-PrinterDriver | Where-Object { $_.Name -like "*Samsung*" }
+```
+
+Use o nome exato retornado no campo `FiltroDriver` do CSV.
+
+### **3. Testar o Modelo**
+
+Execute o menu e teste:
+- ✅ Instalação completa
+- ✅ Instalação personalizada (cada componente)
+- ✅ Múltiplas instalações com IPs diferentes
+- ✅ Verificar se duplicatas são removidas
+
+---
+
+## 🛠️ **Manutenção e Troubleshooting**
+
+### **Verificar Drivers Instalados**
+
+```powers
