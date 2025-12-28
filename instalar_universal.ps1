@@ -296,8 +296,36 @@ if ($instalarEPM) {
         
         if ($arquivoEPM) {
             Write-Host "  -> Instalando Easy Printer Manager..." -ForegroundColor Gray
-            Start-Process $arquivoEPM -ArgumentList "/S" -Wait -NoNewWindow
-            Write-Host "  [OK] Easy Printer Manager instalado!" -ForegroundColor Green
+            Write-Host "  -> Aguardando instalacao (maximo 60 segundos)..." -ForegroundColor Gray
+            
+            # Iniciar processo em background
+            $processo = Start-Process $arquivoEPM -ArgumentList "/S" -PassThru -NoNewWindow
+            
+            # Aguardar com timeout de 60 segundos
+            $tempoLimite = 60
+            $tempoDecorrido = 0
+            
+            while (-not $processo.HasExited -and $tempoDecorrido -lt $tempoLimite) {
+                Start-Sleep -Seconds 2
+                $tempoDecorrido += 2
+                
+                # Verificar se ja foi instalado mesmo com processo ativo
+                if (Test-ProgramaInstalado "Easy Printer Manager") {
+                    Write-Host "  [OK] Easy Printer Manager instalado com sucesso!" -ForegroundColor Green
+                    
+                    # Finalizar processo se ainda estiver ativo
+                    if (-not $processo.HasExited) {
+                        Write-Host "  -> Finalizando processo de instalacao..." -ForegroundColor Gray
+                        Stop-Process -Id $processo.Id -Force -ErrorAction SilentlyContinue
+                    }
+                    break
+                }
+            }
+            
+            # Verificacao final
+            if (-not (Test-ProgramaInstalado "Easy Printer Manager")) {
+                Write-Host "  [AVISO] Instalacao pode nao ter sido concluida. Verifique manualmente." -ForegroundColor Yellow
+            }
         }
     }
     
@@ -321,8 +349,36 @@ if ($instalarEDC) {
         
         if ($arquivoEDC) {
             Write-Host "  -> Instalando Easy Document Creator..." -ForegroundColor Gray
-            Start-Process $arquivoEDC -ArgumentList "/S" -Wait -NoNewWindow
-            Write-Host "  [OK] Easy Document Creator instalado!" -ForegroundColor Green
+            Write-Host "  -> Aguardando instalacao (maximo 60 segundos)..." -ForegroundColor Gray
+            
+            # Iniciar processo em background
+            $processo = Start-Process $arquivoEDC -ArgumentList "/S" -PassThru -NoNewWindow
+            
+            # Aguardar com timeout de 60 segundos
+            $tempoLimite = 60
+            $tempoDecorrido = 0
+            
+            while (-not $processo.HasExited -and $tempoDecorrido -lt $tempoLimite) {
+                Start-Sleep -Seconds 2
+                $tempoDecorrido += 2
+                
+                # Verificar se ja foi instalado mesmo com processo ativo
+                if (Test-ProgramaInstalado "Easy Document Creator") {
+                    Write-Host "  [OK] Easy Document Creator instalado com sucesso!" -ForegroundColor Green
+                    
+                    # Finalizar processo se ainda estiver ativo
+                    if (-not $processo.HasExited) {
+                        Write-Host "  -> Finalizando processo de instalacao..." -ForegroundColor Gray
+                        Stop-Process -Id $processo.Id -Force -ErrorAction SilentlyContinue
+                    }
+                    break
+                }
+            }
+            
+            # Verificacao final
+            if (-not (Test-ProgramaInstalado "Easy Document Creator")) {
+                Write-Host "  [AVISO] Instalacao pode nao ter sido concluida. Verifique manualmente." -ForegroundColor Yellow
+            }
         }
     }
     
